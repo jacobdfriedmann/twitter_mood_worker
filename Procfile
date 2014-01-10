@@ -1,1 +1,1 @@
-web: python twitter_mood_server.py
+worker: python twitter_mood_server.py
