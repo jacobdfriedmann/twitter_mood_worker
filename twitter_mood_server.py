@@ -98,7 +98,8 @@ class MyStreamer(TwythonStreamer):
 					analysis = TextBlob(text)
 					ws = """INSERT INTO tweets (text, state, sentiment, date) VALUES (%s, %s, %s, NOW())"""
 					params = (data['text'], state, analysis.sentiment.polarity)
-					cursor.execute(ws, params)
+					if analysis.sentiment.polarity != 0:
+						cursor.execute(ws, params)
 					if (datetime.datetime.now() - starttime).total_seconds() > 15:
 						print "Commit!"
 						cleanDatabase()
