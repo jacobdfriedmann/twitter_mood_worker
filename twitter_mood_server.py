@@ -24,7 +24,10 @@ mood_lag = 15
 
 sf = shapefile.Reader("states.shp")
 db = urlparse(os.environ['DATABASE_URL'])
-cnx = pymysql.connect(charset='utf8', host=db.hostname, port=db.port, user=db.username, passwd=db.password, db=db.path[1:])
+if db.port:
+	cnx = pymysql.connect(charset='utf8', host=db.hostname, port=db.port, user=db.username, passwd=db.password, db=db.path[1:])
+else:
+	cnx = pymysql.connect(charset='utf8', host=db.hostname, user=db.username, passwd=db.password, db=db.path[1:])
 cursor = cnx.cursor()
 starttime = datetime.datetime.now()
 
