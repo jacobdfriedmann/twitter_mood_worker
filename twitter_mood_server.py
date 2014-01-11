@@ -23,15 +23,18 @@ save_lag = 15
 mood_lag = 15
 
 sf = shapefile.Reader("states.shp")
-db = urlparse(os.environ['DATABASE_URL'])
-if db.port:
-	cnx = pymysql.connect(charset='utf8', host=db.hostname, port=db.port, user=db.username, passwd=db.password, db=db.path[1:])
-else:
-	cnx = pymysql.connect(charset='utf8', host=db.hostname, user=db.username, passwd=db.password, db=db.path[1:])
-cursor = cnx.cursor()
 starttime = datetime.datetime.now()
 ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
 tweets = 0
+
+def getDBCursor():
+	db = urlparse(os.environ['DATABASE_URL'])
+	if db.port:
+		cnx = pymysql.connect(charset='utf8', host=db.hostname, port=db.port, user=db.username, passwd=db.password, db=db.path[1:])
+	else:
+		cnx = pymysql.connect(charset='utf8', host=db.hostname, user=db.username, passwd=db.password, db=db.path[1:])
+	cursor = cnx.cursor()
+	return {'cursor': cursor, 'connection': cnx}
 
 def pip(x,y,poly):
     n = len(poly)
@@ -51,11 +54,25 @@ def pip(x,y,poly):
 
 def cleanDatabase():
 	global save_lag
+	cc = getDBCursor()
+	cursor = cc['cursor']
+	cnx = cc['connection']
 	lag = datetime.datetime.now() - datetime.timedelta(minutes=save_lag)
 	params = lag.isoformat(' ')
 	rs = "DELETE FROM tweets WHERE `date` < '%s'" % (params)
 	cursor.execute(rs)
+	cursor.close()
+	cnx.close()
 	print "Cleaned!"
+
+def commitTweets():
+	global ws
+	cc = getDBCursor()
+	cursor = cc['cursor']
+	cnx = cc['connection']
+	cursor.execute(ws)
+	cursor.close()
+	cnx.close()
 
 def processTweet(tweet):
     #Convert to lower case
@@ -108,9 +125,8 @@ class MyStreamer(TwythonStreamer):
 						print tweets
 					if (datetime.datetime.now() - starttime).total_seconds() > 15:
 						print "Commit!"
-						cursor.execute(ws)
+						commitTweets()
 						cleanDatabase()
-						cnx.commit()
 						starttime = datetime.datetime.now()
 						tweets = 0
 						ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
