@@ -34,7 +34,7 @@ def getDBCursor():
 	else:
 		cnx = pymysql.connect(charset='utf8', host=db.hostname, user=db.username, passwd=db.password, db=db.path[1:])
 	cursor = cnx.cursor()
-	return {'cursor': cursor, 'connection': cnx}
+	return (cursor, cnx)
 
 def pip(x,y,poly):
     n = len(poly)
@@ -54,23 +54,22 @@ def pip(x,y,poly):
 
 def cleanDatabase():
 	global save_lag
-	cc = getDBCursor()
-	cursor = cc['cursor']
-	cnx = cc['connection']
+	cursor, cnx = getDBCursor()
 	lag = datetime.datetime.now() - datetime.timedelta(minutes=save_lag)
 	params = lag.isoformat(' ')
 	rs = "DELETE FROM tweets WHERE `date` < '%s'" % (params)
 	cursor.execute(rs)
+	cnx.commit()
 	cursor.close()
 	cnx.close()
 	print "Cleaned!"
 
 def commitTweets():
 	global ws
-	cc = getDBCursor()
-	cursor = cc['cursor']
-	cnx = cc['connection']
+	print ws
+	cursor, cnx = getDBCursor()
 	cursor.execute(ws)
+	cnx.commit()
 	cursor.close()
 	cnx.close()
 
