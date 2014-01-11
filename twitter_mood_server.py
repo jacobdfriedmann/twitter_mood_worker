@@ -30,6 +30,8 @@ else:
 	cnx = pymysql.connect(charset='utf8', host=db.hostname, user=db.username, passwd=db.password, db=db.path[1:])
 cursor = cnx.cursor()
 starttime = datetime.datetime.now()
+ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
+tweets = 0
 
 def pip(x,y,poly):
     n = len(poly)
@@ -74,6 +76,8 @@ class MyStreamer(TwythonStreamer):
 
 	def on_success(self, data):
 		global starttime
+		global tweets
+		global ws
 		if 'coordinates' in data:
 			state = "nil"
 			try:
@@ -96,16 +100,20 @@ class MyStreamer(TwythonStreamer):
 				if ('text' in data) and (state != 'nil'):
 					text = processTweet(data['text'])
 					analysis = TextBlob(text)
-					ws = """INSERT INTO tweets (text, state, sentiment, date) VALUES (%s, %s, %s, NOW())"""
-					params = (data['text'], state, analysis.sentiment.polarity)
 					if analysis.sentiment.polarity != 0:
-						cursor.execute(ws, params)
+						if tweets > 0:
+							ws += ", "
+						ws += """('%s', %s, NOW())""" % (state, analysis.sentiment.polarity)
+						tweets += 1
+						print tweets
 					if (datetime.datetime.now() - starttime).total_seconds() > 15:
 						print "Commit!"
+						cursor.execute(ws)
 						cleanDatabase()
 						cnx.commit()
 						starttime = datetime.datetime.now()
-
+						tweets = 0
+						ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
 
 			except Exception as e:
 				print e
