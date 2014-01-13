@@ -121,7 +121,7 @@ class MyStreamer(TwythonStreamer):
 							ws += ", "
 						ws += """('%s', %s, NOW())""" % (state, analysis.sentiment.polarity)
 						tweets += 1
-						print tweets
+						print str(analysis.sentiment.polarity) + " - " + state + " - " + data['text']
 					if (datetime.datetime.now() - starttime).total_seconds() > 15:
 						print "Commit!"
 						commitTweets()
