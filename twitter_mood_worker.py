@@ -19,8 +19,8 @@ APP_SECRET = os.environ['APP_SECRET']
 OAUTH_TOKEN = os.environ['OAUTH_TOKEN']
 OAUTH_TOKEN_SECRET = os.environ['OAUTH_TOKEN_SECRET']
 
-save_lag = 15
-mood_lag = 15
+save_lag = 30
+mood_lag = 30
 
 sf = shapefile.Reader("states.shp")
 starttime = datetime.datetime.now()
@@ -139,6 +139,6 @@ class MyStreamer(TwythonStreamer):
 def stream():
 	stream = MyStreamer(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 	#stream.statuses.filter(locations='-124.7625,24.5210,-66.9326,49.3845,-171.7911,54.4041,-129.9799,71.3577,-159.8005,18.9161,-154.8074,22.2361')
-	stream.statuses.filter(track='golden globes, globes, hollywood foreign press, gg')
+	stream.statuses.filter(track='golden globes, globes, hollywood foreign press, gg, red carpet, nbc')
 	
 stream()
