@@ -139,6 +139,6 @@ class MyStreamer(TwythonStreamer):
 def stream():
 	stream = MyStreamer(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 	#stream.statuses.filter(locations='-124.7625,24.5210,-66.9326,49.3845,-171.7911,54.4041,-129.9799,71.3577,-159.8005,18.9161,-154.8074,22.2361')
-	stream.statuses.filter(track='golden globes, globes, hollywood foreign press, gg, red carpet, nbc')
+	stream.statuses.filter(track='golden globes, globes, hollywood foreign press, gg, red carpet, nbc, goldenglobes, eredcarpet')
 	
 stream()
