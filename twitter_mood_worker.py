@@ -23,6 +23,7 @@ save_lag = 15
 
 sf = shapefile.Reader("states.shp")
 starttime = datetime.datetime.now()
+stattime = datetime.datetime.now()
 ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
 tweets = 0
 
@@ -72,6 +73,19 @@ def commitTweets():
 	cursor.close()
 	cnx.close()
 
+def takeAverage():
+	cursor, cnx = getDBCursor()
+	avgString = "SELECT AVG(sentiment), STDDEV(sentiment) FROM tweets"
+	cursor.execute(avgString)
+	for avg, stddev in cursor:
+		statistic = "INSERT INTO statistics (avg, stddev) VALUES (%s, %s)"
+		params = (avg, stddev)
+		cursor.execute(statistic, params)
+	cnx.commit()
+	cursor.close()
+	cnx.close()
+	print "Statistic!"
+
 def processTweet(tweet):
     #Convert to lower case
     tweet = tweet.lower()
@@ -91,6 +105,7 @@ class MyStreamer(TwythonStreamer):
 
 	def on_success(self, data):
 		global starttime
+		global stattime
 		global tweets
 		global ws
 		if 'coordinates' in data:
@@ -128,6 +143,10 @@ class MyStreamer(TwythonStreamer):
 						starttime = datetime.datetime.now()
 						tweets = 0
 						ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
+
+				if (datetime.datetime.now() - stattime).total_seconds() > 300:
+					takeAverage()
+					stattime = datetime.datetime.now()
 
 			except Exception as e:
 				print e
