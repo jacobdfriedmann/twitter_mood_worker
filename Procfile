@@ -1,1 +1,1 @@
-worker: python twitter_mood_worker.py
+worker: python twitter_mood_worker.py 10

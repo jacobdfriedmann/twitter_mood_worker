@@ -13,18 +13,23 @@ import sys
 import traceback
 import os
 import re
+import threading
 
 APP_KEY = os.environ['APP_KEY']
 APP_SECRET = os.environ['APP_SECRET']
 OAUTH_TOKEN = os.environ['OAUTH_TOKEN']
 OAUTH_TOKEN_SECRET = os.environ['OAUTH_TOKEN_SECRET']
 
-save_lag = 15
+save_lag = int(sys.argv[1])
+if len(sys.argv) > 2:
+	track_word = sys.argv[2]
+else:
+	track_word = None
 
 sf = shapefile.Reader("states.shp")
 starttime = datetime.datetime.now()
 stattime = datetime.datetime.now()
-ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
+ws = "INSERT INTO tweets (text, state, sentiment, date, lat, lng) VALUES "
 tweets = 0
 
 def getDBCursor():
@@ -64,9 +69,7 @@ def cleanDatabase():
 	cnx.close()
 	print "Cleaned!"
 
-def commitTweets():
-	global ws
-	print ws
+def commitTweets(ws):
 	cursor, cnx = getDBCursor()
 	cursor.execute(ws)
 	cnx.commit()
@@ -109,40 +112,42 @@ class MyStreamer(TwythonStreamer):
 		global tweets
 		global ws
 		if 'coordinates' in data:
-			state = "nil"
 			try:
+				state = None
+				lat = None
+				lng = None
 				if isinstance(data['coordinates'], Iterable):
 					if 'coordinates' in data['coordinates']:
-							lat = data['coordinates']['coordinates'][0]
-							lon = data['coordinates']['coordinates'][1]
-							
-							for st in sf.shapeRecords():
-								if pip(lat, lon, st.shape.points):
-									state = st.record[31]
-									break
+						lat = data['coordinates']['coordinates'][0]
+						lng = data['coordinates']['coordinates'][1]
+						
+						for st in sf.shapeRecords():
+							if pip(lat, lng, st.shape.points):
+								state = st.record[31]
+								break
 
-				elif 'place' in data and isinstance(data['place'], Iterable):
-					if data['place']['country_code'] == 'US':
-						state = data['place']['full_name'][-2:]
-						print state
-
-
-				if ('text' in data) and (state != 'nil'):
+				if ('text' in data) and (state != None):
 					text = processTweet(data['text'])
 					analysis = TextBlob(text)
+					text = data['text'].replace("\"", "'").encode('utf8')
+					text = text.replace("\\", "")
 					if analysis.sentiment.polarity != 0:
+						nws = ""
 						if tweets > 0:
-							ws += ", "
-						ws += """('%s', %s, NOW())""" % (state, analysis.sentiment.polarity)
+							nws += ", "
+						nws += """("%s", "%s", %s, "%s", %s, %s)""" % (text, state, analysis.sentiment.polarity, datetime.datetime.now().isoformat(' '), lat, lng)
+						print nws
+						ws += nws
 						tweets += 1
-						print tweets
-					if (datetime.datetime.now() - starttime).total_seconds() > 15:
+					if (datetime.datetime.now() - starttime).total_seconds() > 20:
 						print "Commit!"
-						commitTweets()
-						cleanDatabase()
+						commit = threading.Thread(target=commitTweets, args=(ws,))
+						commit.start()
+						clean = threading.Thread(target=cleanDatabase)
+						clean.start()
 						starttime = datetime.datetime.now()
 						tweets = 0
-						ws = "INSERT INTO tweets (state, sentiment, date) VALUES "
+						ws = "INSERT INTO tweets (text, state, sentiment, date, lat, lng) VALUES "
 
 				if (datetime.datetime.now() - stattime).total_seconds() > 300:
 					takeAverage()
@@ -156,6 +161,9 @@ class MyStreamer(TwythonStreamer):
 
 def stream():
 	stream = MyStreamer(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
-	stream.statuses.filter(locations='-124.7625,24.5210,-66.9326,49.3845,-171.7911,54.4041,-129.9799,71.3577,-159.8005,18.9161,-154.8074,22.2361')
-	
+	if track_word is None:
+		stream.statuses.filter(locations='-124.7625,24.5210,-66.9326,49.3845,-171.7911,54.4041,-129.9799,71.3577,-159.8005,18.9161,-154.8074,22.2361')
+	else:
+		stream.statuses.filter(track=track_word)
+
 stream()
